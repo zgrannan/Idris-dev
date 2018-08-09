@@ -488,7 +488,7 @@ orderByInf vs cs = let alwaysInf = getInf cs in
 
 match :: [Name] -> [Clause] -> SC -- error case
                             -> CaseBuilder SC
-match [] (([], ret) : xs) err
+match [] ((_, ret) : xs) err
     = do (ts, v, ntys) <- get
          put (ts ++ (map (fst.snd) xs), v, ntys)
          case snd ret of
