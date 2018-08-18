@@ -666,6 +666,11 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                        (Elaborating "left hand side of " fname Nothing
                         (Msg "unexpected patterns outside of \"with\" block")))
 
+        when (countWiths lhs_in /= (length withs)) $
+            ierror (At (fromMaybe NoFC $ highestFC lhs_in_as)
+                       (Elaborating "left hand side of " fname Nothing
+                        (Msg $ (show (length withs)) ++ " withs provided, but " ++ (show (countWiths lhs_in) ++ " withs were expected"))))
+
         -- get the parameters first, to pass through to any where block
         let fn_ty = case lookupTy fname ctxt of
                          [t] -> t
@@ -927,10 +932,18 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                                    (b : bf, af)
       sepBlocks' ns [] = ([], [])
 
+
+    countWiths :: PTerm -> Int
+    countWiths (PApp _ (PRef _ _ (name)) _) = countWiths' name where
+      countWiths' :: Name -> Int
+      countWiths' (SN (WithN _ name')) = 1 + countWiths' name'
+      countWiths' _ = 0
+    countWiths _ = 0
+
+
     -- term is not within "with" block
     isOutsideWith :: PTerm -> Bool
-    isOutsideWith (PApp _ (PRef _ _ (SN (WithN _ _))) _) = False
-    isOutsideWith _ = True
+    isOutsideWith term = (countWiths term) /= 0
 
 elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
    = do ctxt <- getContext
