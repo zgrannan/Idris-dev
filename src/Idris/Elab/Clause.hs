@@ -623,6 +623,14 @@ checkPossibles info fc tcgen fname (lhs : rest)
     qmatch x y = x == y
 checkPossibles _ _ _ _ [] = return []
 
+countWiths :: PTerm -> Int
+countWiths (PApp _ (PRef _ _ name) _) = countWithsInName name
+countWiths _ = 0
+
+countWithsInName :: Name -> Int
+countWithsInName (SN (WithN _ name')) = 1 + countWithsInName name'
+countWithsInName _ = 0
+
 findUnique :: Context -> Env -> Term -> [Name]
 findUnique ctxt env (Bind n b sc)
    = let rawTy = forgetEnv (map fstEnv env) (binderTy b)
@@ -650,7 +658,7 @@ elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
                           logElab 5 $ "Elaborated impossible case " ++ showTmImpls lhs ++
                                       "\n" ++ show ptm
                           return (Left ptm, lhs)
-elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as whereblock_as)
+elabClause info opts (cnum, p@(PClause fc fname lhs_in_as withs rhs_in_as whereblock_as))
    = do push_estack fname False
         ctxt <- getContext
         let (lhs_in, rhs_in, whereblock) = desugarAs lhs_in_as rhs_in_as whereblock_as
@@ -666,10 +674,6 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                        (Elaborating "left hand side of " fname Nothing
                         (Msg "unexpected patterns outside of \"with\" block")))
 
-        when (countWiths lhs_in /= (length withs)) $
-            ierror (At (fromMaybe NoFC $ highestFC lhs_in_as)
-                       (Elaborating "left hand side of " fname Nothing
-                        (Msg $ (show (length withs)) ++ " withs provided, but " ++ (show (countWiths lhs_in) ++ " withs were expected"))))
 
         -- get the parameters first, to pass through to any where block
         let fn_ty = case lookupTy fname ctxt of
@@ -681,6 +685,21 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         let norm_ty = normalise ctxt [] fn_ty
         let params = getParamsInType i [] fn_is norm_ty
         let tcparams = getTCParamsInType i [] fn_is norm_ty
+
+        let providedWiths = length withs + 1
+        let debug = "fc" ++ (show fc) ++
+                    "fname counts: " ++ (show $ countWithsInName fname ) ++
+                    " lhs_in: " ++ (show $ countWiths lhs_in) ++
+                    " with counts " ++ (show providedWiths) ++
+                    " fname " ++ (show fname) ++
+                    " withs " ++ (show withs) ++
+                    " lhs_in_as " ++ (show lhs_in_as) ++
+                    " fntype " ++ (show fn_ty)
+        let expectedWiths = countWiths $ trace debug lhs_in
+        when (providedWiths > 1) $
+            ierror (At (fromMaybe NoFC $ highestFC lhs_in)
+                       (Elaborating "left hand side of " fname Nothing
+                        (Msg $ (show expectedWiths) ++ " with clauses, but " ++ (show providedWiths) ++ " expressions were provided in " ++ (show fc) ++ (show p) )))
 
         let lhs = mkLHSapp $ stripLinear i $ stripUnmatchable i $
                     propagateParams i params norm_ty (allNamesIn lhs_in) (addImplPat i lhs_in)
@@ -933,19 +952,13 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
       sepBlocks' ns [] = ([], [])
 
 
-    countWiths :: PTerm -> Int
-    countWiths (PApp _ (PRef _ _ (name)) _) = countWiths' name where
-      countWiths' :: Name -> Int
-      countWiths' (SN (WithN _ name')) = 1 + countWiths' name'
-      countWiths' _ = 0
-    countWiths _ = 0
 
 
     -- term is not within "with" block
     isOutsideWith :: PTerm -> Bool
-    isOutsideWith term = (countWiths term) /= 0
+    isOutsideWith term = (countWiths term) == 0
 
-elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
+elabClause info opts (_, p@(PWith fc fname lhs_in withs wval_in pn_in withblock))
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings

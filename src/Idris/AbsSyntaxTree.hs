@@ -13,6 +13,7 @@ Maintainer  : The Idris Community.
 
 module Idris.AbsSyntaxTree where
 
+import Debug.Trace
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.TT
@@ -999,12 +1000,12 @@ data PTerm = PQuote Raw         -- ^ Inclusion of a core term into the
            | PConstSugar FC PTerm
              -- ^ A desugared constant. The FC is a precise source
              -- location that will be used to highlight it later.
-       deriving (Eq, Ord, Data, Typeable, Generic)
+       deriving (Eq, Ord, Data, Typeable, Generic, Show)
 
 data PAltType = ExactlyOne Bool -- ^ flag sets whether delay is allowed
               | FirstSuccess
               | TryImplicit
-       deriving (Eq, Ord, Data, Generic, Typeable)
+       deriving (Eq, Ord, Data, Generic, Typeable, Show)
 
 -- | Transform the FCs in a PTerm. The first function transforms the
 -- general-purpose FCs, and the second transforms those that are used
@@ -1168,7 +1169,7 @@ data PDo' t = DoExp  FC t
             | DoLet  FC RigCount Name FC t t   -- ^ second FC is precise name location
             | DoLetP FC t t [(t,t)]
             | DoRewrite FC t          -- rewrite in do block
-    deriving (Eq, Ord, Functor, Data, Generic, Typeable)
+    deriving (Eq, Ord, Functor, Data, Generic, Typeable, Show)
 {-!
 deriving instance Binary PDo'
 !-}
@@ -1598,9 +1599,6 @@ piBindp p ((n, ty):ns) t = PPi p n NoFC ty (piBindp p ns t)
 
 -- These "show" implementations render to an absurdly wide screen because inserted line breaks
 -- could interfere with interactive editing, which calls "show".
-
-instance Show PTerm where
-  showsPrec _ tm = (displayS . renderPretty 1.0 10000000 . prettyImp defaultPPOption) tm
 
 instance Show PDecl where
   showsPrec _ d = (displayS . renderPretty 1.0 10000000 . showDeclImp verbosePPOption) d
