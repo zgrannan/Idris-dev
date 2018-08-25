@@ -40,7 +40,7 @@ import Data.Maybe
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.Version
-import Idris.AbsSyntax
+import Idris.AbsSyntax hiding (name)
 import Idris.Apropos (apropos, aproposModules)
 import Idris.ASTUtils
 import Idris.Colours hiding (colourise)
@@ -1498,7 +1498,7 @@ showTotal :: Totality -> IState -> Doc OutputAnnotation
 showTotal t@(Partial (Other ns)) i
    = text "possibly not total due to:" <$>
      vsep (map (showTotalN i) ns)
-showTotal t@(Partial (Mutual ns)) i
+showTotal t@(Partial (Mutual _ ns)) i
    = text "possibly not total due to recursive path:" <$>
      align (group (vsep (punctuate comma
        (map (\n -> annotate (AnnName n Nothing Nothing Nothing) $

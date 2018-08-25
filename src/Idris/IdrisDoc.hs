@@ -9,7 +9,7 @@ Maintainer  : The Idris Community.
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.IdrisDoc (generateDocs) where
 
-import Idris.AbsSyntax
+import Idris.AbsSyntax hiding (name)
 import Idris.Core.Evaluate (Accessibility(..), ctxtAlist, isDConName, isFnName,
                             isTConName, lookupDefAcc)
 import Idris.Core.TT (Name(..), OutputAnnotation(..), TextFormatting(..),

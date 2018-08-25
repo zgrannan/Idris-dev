@@ -321,7 +321,12 @@ data SizeChange = Smaller | Same | Bigger | Unknown
 deriving instance Binary SizeChange
 !-}
 
-type SCGEntry = (Name, [Maybe (Int, SizeChange)])
+data SCGEntry = SCGEntry {
+    name :: Name
+  , sc   :: [Maybe (Int, SizeChange)]
+  , fc   :: Maybe FC
+  } deriving (Eq, Show, Generic)
+
 type UsageReason = (Name, Int)  -- fn_name, its_arg_number
 
 data CGInfo = CGInfo {

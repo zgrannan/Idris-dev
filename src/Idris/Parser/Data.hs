@@ -9,7 +9,7 @@ Maintainer  : The Idris Community.
              MultiParamTypeClasses, PatternGuards #-}
 module Idris.Parser.Data where
 
-import Idris.AbsSyntax
+import Idris.AbsSyntax hiding (name)
 import Idris.Core.TT
 import Idris.Docstrings
 import Idris.Options

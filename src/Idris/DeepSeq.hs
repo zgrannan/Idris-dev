@@ -63,6 +63,7 @@ instance NFData FnInfo
 instance NFData Codegen
 instance NFData IRFormat
 instance NFData LogCat
+instance NFData SCGEntry
 instance NFData CGInfo
 instance NFData Fixity
 instance NFData FixDecl
