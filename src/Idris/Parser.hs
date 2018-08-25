@@ -16,7 +16,7 @@ module Idris.Parser(IdrisParser(..), ImportInfo(..), moduleName, addReplSyntax, 
                     decl, fixColour, loadFromIFile, loadModule, name, opChars, parseElabShellStep, parseConst, parseExpr, parseImports, parseTactic,
                     runparser, ParseError, parseErrorDoc) where
 
-import Idris.AbsSyntax hiding (namespace, params)
+import Idris.AbsSyntax hiding (name, namespace, params)
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate

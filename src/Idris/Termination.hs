@@ -156,7 +156,7 @@ calcTotality fc n pats
 
 checkTotality :: [Name] -> FC -> Name -> Idris Totality
 checkTotality path fc n
-    | n `elem` path = return (Partial (Mutual (n : path)))
+    | n `elem` path = return (Partial (Mutual Nothing (n : path)))
     | otherwise = do
         t <- getTotality n
         i <- getIState
@@ -296,17 +296,25 @@ data Guardedness = Toplevel | Unguarded | Guarded | Delayed
   deriving Show
 
 buildSCG' :: IState -> Name -> [(Term, Term)] -> [Name] -> [SCGEntry]
-buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
-  scgPat (lhs, rhs) = let lhs' = delazy lhs
-                          rhs' = delazy rhs
-                          (_, pargs) = unApply (dePat lhs') in
-                            findCalls [] Toplevel (dePat rhs') (patvars lhs')
-                                      (zip pargs [0..])
+buildSCG' ist topfn pats args = nub $ concatMap scgPat (zip pats [0..]) where
+
+  getFC :: Int -> Name -> Maybe FC
+  getFC index f = do
+    (_, terms) <- lookupCtxtExact f (idris_patdefs ist)
+    highestFC (terms !! index)
+
+  scgPat :: ((Term, Term), Int) -> [SCGEntry]
+  scgPat ((lhs, rhs), index) = let lhs' = delazy lhs
+                                   rhs' = delazy rhs
+                                   (_, pargs) = unApply (dePat lhs') in
+                                     findCalls index [] Toplevel (dePat rhs') (patvars lhs')
+                                                     (zip pargs [0..])
 
   -- Under a delay, calls are excluded from the graph - if it's a call to a
   -- non-total function we'll find that in the final totality check
-  findCalls cases Delayed ap@(P _ n _) pvs args = []
-  findCalls cases guarded ap@(App _ f a) pvs pargs
+  findCalls :: Int -> [Name] -> Guardedness -> Term -> [Name] -> [(Term, Int)] -> [SCGEntry]
+  findCalls _ cases Delayed ap@(P _ n _) pvs args = []
+  findCalls index cases guarded ap@(App _ f a) pvs pargs
      -- under a call to "assert_total", don't do any checking, just believe
      -- that it is total.
      | (P _ (UN at) _, [_, _]) <- unApply ap,
@@ -320,20 +328,20 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
      | (P _ (UN del) _, [_,_,arg]) <- unApply ap,
        Guarded <- guarded,
        del == txt "Delay"
-           = findCalls cases Delayed arg pvs pargs
+           = findCalls index cases Delayed arg pvs pargs
      | (P _ n _, args) <- unApply ap,
        Delayed <- guarded,
        isConName n (tt_ctxt ist) || allGuarded n ist
            = -- Still under a 'Delay' and constructor guarded, so check
              -- just the arguments to the constructor, remaining Delayed
-             concatMap (\x -> findCalls cases guarded x pvs pargs) args
+             concatMap (\x -> findCalls index cases guarded x pvs pargs) args
      | (P _ ifthenelse _, [_, _, t, e]) <- unApply ap,
        ifthenelse == sNS (sUN "ifThenElse") ["Bool", "Prelude"]
        -- Continue look inside if...then...else blocks
        -- TODO: Consider whether we should do this for user defined ifThenElse
        -- rather than just the one in the Prelude as a special case
-       = findCalls cases guarded t pvs pargs ++
-         findCalls cases guarded e pvs pargs
+       = findCalls index cases guarded t pvs pargs ++
+         findCalls index cases guarded e pvs pargs
      | (P _ n _, args) <- unApply ap,
        caseName n && n /= topfn,
        notPartial (lookupTotalExact n (tt_ctxt ist))
@@ -341,14 +349,14 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
        -- (i.e. not currently set at Partial) to get a more accurate size
        -- change result from the top level patterns (also to help pass
        -- information through from guarded corecursion accurately)
-       = concatMap (\x -> findCalls cases Unguarded x pvs pargs) args ++
+       = concatMap (\x -> findCalls index cases Unguarded x pvs pargs) args ++
              if n `notElem` cases
-                then findCallsCase (n : cases) guarded n args pvs pargs
+                then findCallsCase index (n : cases) guarded n args pvs pargs
                 else []
      | (P _ n _, args) <- unApply ap,
        Delayed <- guarded
        -- Under a delayed recursive call just check the arguments
-           = concatMap (\x -> findCalls cases Unguarded x pvs pargs) args
+           = concatMap (\x -> findCalls index cases Unguarded x pvs pargs) args
      | (P _ n _, args) <- unApply ap,
        not (n `elem` pvs)
         -- Ordinary call, not under a delay.
@@ -359,35 +367,35 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
                                        || allGuarded n ist
                                       then Guarded
                                       else Unguarded in
-              mkChange n args pargs ++
-                 concatMap (\x -> findCalls cases nguarded x pvs pargs) args
+              mkChange (getFC index n) n args pargs ++
+                 concatMap (\x -> findCalls index cases nguarded x pvs pargs) args
     where notPartial (Just (Partial NotCovering)) = False
           notPartial _ = True
-  findCalls cases guarded (App _ f a) pvs pargs
-        = findCalls cases Unguarded f pvs pargs ++ findCalls cases Unguarded a pvs pargs
-  findCalls cases guarded (Bind n (Let rig t v) e) pvs pargs
-        = findCalls cases Unguarded t pvs pargs ++
-          findCalls cases Unguarded v pvs pargs ++
+  findCalls index cases guarded (App _ f a) pvs pargs
+        = findCalls index cases Unguarded f pvs pargs ++ findCalls index cases Unguarded a pvs pargs
+  findCalls index cases guarded (Bind n (Let rig t v) e) pvs pargs
+        = findCalls index cases Unguarded t pvs pargs ++
+          findCalls index cases Unguarded v pvs pargs ++
           -- Substitute in the scope since this might reveal some useful
           -- structure
-          findCalls cases guarded (substV v e) pvs pargs
-  findCalls cases guarded (Bind n t e) pvs pargs
-        = findCalls cases Unguarded (binderTy t) pvs pargs ++
-          findCalls cases guarded e (n : pvs) pargs
-  findCalls cases guarded (P _ f _ ) pvs pargs
-      | not (f `elem` pvs) = [(f, [])]
-  findCalls _ _ _ _ _ = []
+          findCalls index cases guarded (substV v e) pvs pargs
+  findCalls index cases guarded (Bind n t e) pvs pargs
+        = findCalls index cases Unguarded (binderTy t) pvs pargs ++
+          findCalls index cases guarded e (n : pvs) pargs
+  findCalls index cases guarded (P _ f _ ) pvs pargs
+      | not (f `elem` pvs) = [SCGEntry f [] (getFC index f)]
+  findCalls _ _ _ _ _ _ = []
 
   -- Assumption is that names are preserved in the case block (shadowing
   -- dealt with by the elaborator) so we can just assume the top level names
   -- are okay for building the size change
-  findCallsCase cases guarded n args pvs pargs
+  findCallsCase index cases guarded n args pvs pargs
       = case lookupDefExact n (tt_ctxt ist) of
            Just (CaseOp _ _ _ pats _ cd) ->
-                concatMap (fccPat cases pvs pargs args guarded) (rights pats)
+                concatMap (fccPat index cases pvs pargs args guarded) (rights pats)
            Nothing -> []
 
-  fccPat cases pvs pargs args g (lhs, rhs)
+  fccPat index cases pvs pargs args g (lhs, rhs)
       = let lhs' = delazy lhs
             rhs' = delazy rhs
             (_, pargs_case) = unApply (dePat lhs')
@@ -403,7 +411,7 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
             csubs = zip pargs_case args
             newrhs = doCaseSubs csubs (dePat rhs')
             pargs' = pargs ++ addPArg newpargs pargs_case in
-               findCalls cases g newrhs pvs pargs'
+               findCalls index cases g newrhs pvs pargs'
     where
       doCaseSubs [] tm = tm
       doCaseSubs ((x, x') : cs) tm
@@ -431,7 +439,8 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
            expand i (Bind n (Pi _ _ _ _) sc) [] = Nothing : expand (i + 1) sc []
            expand i _ xs = xs
 
-  mkChange n args pargs = [(n, expandToArity n (sizes args))]
+  mkChange :: Maybe FC -> Name -> [Term] -> [(Term, Int)] -> [SCGEntry]
+  mkChange fc n args pargs = [SCGEntry n (expandToArity n (sizes args)) fc]
     where
       sizes [] = []
       sizes (a : as) = checkSize a pargs : sizes as
@@ -511,20 +520,20 @@ type MultiPath = [SCGEntry]
 mkMultiPaths :: IState -> MultiPath -> [SCGEntry] -> [MultiPath]
 mkMultiPaths ist path [] = [reverse path]
 mkMultiPaths ist path cg = concatMap extend cg
-  where extend (nextf, args)
-           | (nextf, args) `inPath` path = [ reverse ((nextf, args) : path) ]
+  where extend entry@(SCGEntry nextf args _)
+           | entry `inPath` path = [ reverse (entry : path) ]
            | [Unchecked] <- lookupTotal nextf (tt_ctxt ist)
                = case lookupCtxt nextf (idris_callgraph ist) of
-                    [ncg] -> mkMultiPaths ist ((nextf, args) : path) (scg ncg)
-                    _ -> [ reverse ((nextf, args) : path) ]
-           | otherwise = [ reverse ((nextf, args) : path) ]
+                    [ncg] -> mkMultiPaths ist (entry : path) (scg ncg)
+                    _ -> [ reverse (entry : path) ]
+           | otherwise = [ reverse (entry : path) ]
 
         inPath :: SCGEntry -> [SCGEntry] -> Bool
         inPath f [] = False
         inPath f (g : gs) = smallerEq f g || f == g || inPath f gs
 
         smallerEq :: SCGEntry -> SCGEntry -> Bool
-        smallerEq (f, args) (g, args')
+        smallerEq (SCGEntry f args _) (SCGEntry g args' _)
             = f == g && not (null (filter smallers args))
                      && filter smallers args == filter smallers args'
         smallers (Just (_, Smaller)) = True
@@ -544,12 +553,16 @@ checkMP ist topfn i mp = if i > 0
   where
     mkBig (e, d) = (e, 10000)
 
+    getFC :: [((SCGEntry, Int), Int)] -> Maybe FC
+    getFC []                     = Nothing
+    getFC (((scgEntry, _), _):_) = fc scgEntry
+
     tryPath :: Int -> [((SCGEntry, Int), Int)] -> MultiPath -> Int -> Totality
     tryPath desc path [] _ = Total []
 --     tryPath desc path ((UN "believe_me", _) : _) arg
 --             = Partial BelieveMe
     -- if we get to a constructor, it's fine as long as it's strictly positive
-    tryPath desc path ((f, _) : es) arg
+    tryPath desc path ((SCGEntry f _ _) : es) arg
         | [TyDecl (DCon _ _ _) _] <- lookupDef f (tt_ctxt ist)
             = case lookupTotalExact f (tt_ctxt ist) of
                    Just (Total _) -> Unchecked -- okay so far
@@ -558,10 +571,10 @@ checkMP ist topfn i mp = if i > 0
                                   -- some progress
         | [TyDecl (TCon _ _) _] <- lookupDef f (tt_ctxt ist)
             = Total []
-    tryPath desc path (e@(f, args) : es) arg
+    tryPath desc path (e@(SCGEntry f args _) : es) arg
         | [Total a] <- lookupTotal f (tt_ctxt ist) = Total a
-        | e `elem` es && allNothing args = Partial (Mutual [f])
-    tryPath desc path (e@(f, nextargs) : es) arg
+        | e `elem` es && allNothing args = Partial (trace "c1" $ Mutual (getFC path) [f])
+    tryPath desc path (e@(SCGEntry f nextargs _) : es) arg
         | [Total a] <- lookupTotal f (tt_ctxt ist) = Total a
         | [Partial _] <- lookupTotal f (tt_ctxt ist) = Partial (Other [f])
         | Just d <- lookup (e, arg) path
@@ -569,10 +582,10 @@ checkMP ist topfn i mp = if i > 0
                    then -- trace ("Descent " ++ show (desc - d) ++ " "
                         --      ++ show (path, e)) $
                         Total []
-                   else Partial (Mutual (map (fst . fst . fst) path ++ [f]))
+                   else Partial (trace "c2" $ Mutual (getFC path) (map (name . fst . fst) path ++ [f]))
         | e `elem` map (fst . fst) path
-           && not (f `elem` map fst es)
-              = Partial (Mutual (map (fst . fst . fst) path ++ [f]))
+           && not (f `elem` map name es)
+              = Partial (trace "c3" $ Mutual (getFC path) (map (name . fst . fst) path ++ [f]))
         | [Unchecked] <- lookupTotal f (tt_ctxt ist) =
             let argspos = zip nextargs [0..]
                 pathres =

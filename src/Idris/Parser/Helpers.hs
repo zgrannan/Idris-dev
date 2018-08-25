@@ -69,7 +69,7 @@ module Idris.Parser.Helpers
   )
 where
 
-import Idris.AbsSyntax
+import Idris.AbsSyntax hiding (name)
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate (pprintErr)

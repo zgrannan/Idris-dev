@@ -8,7 +8,7 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE FlexibleContexts, TupleSections #-}
 module Idris.Parser.Expr where
 
-import Idris.AbsSyntax
+import Idris.AbsSyntax hiding (name)
 import Idris.Core.TT
 import Idris.DSL
 import Idris.Options
