@@ -1109,7 +1109,7 @@ unApplyRaw tm = ua [] tm
 buildFunDefns :: IState -> Name -> [RFunDefn Term]
 buildFunDefns ist n =
   [ mkFunDefn name clauses
-  | (name, (clauses, _)) <- lookupCtxtName n $ idris_patdefs ist
+  | (name, (clauses, _, _)) <- lookupCtxtName n $ idris_patdefs ist
   ]
 
   where mkFunDefn name clauses = RDefineFun name (map mkFunClause clauses)

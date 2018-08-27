@@ -2729,7 +2729,7 @@ processTacticDecls info steps =
                       else Partial NotCovering -- missing cases implies not total
          setTotality n tot
          updateIState $ \i -> i { idris_patdefs =
-                                    addDef n (cs, pmissing) $ idris_patdefs i }
+                                    addDef n (cs, pmissing, []) $ idris_patdefs i }
          addIBC (IBCDef n)
 
          ctxt <- getContext

@@ -118,8 +118,8 @@ addMissing fn updatefile l n
 
         extras <- case lookupCtxtExact n' (idris_patdefs i) of
                        Nothing -> return ""
-                       Just (_, tms) -> do tms' <- nameMissing tms
-                                           showNew (show n ++ "_rhs") 1 indent tms'
+                       Just (_, tms, _) -> do tms' <- nameMissing tms
+                                              showNew (show n ++ "_rhs") 1 indent tms'
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
         if updatefile
           then do let fb = fn ++ "~"

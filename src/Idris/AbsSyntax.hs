@@ -692,7 +692,7 @@ getInternalApp fp l = do i <- getIState
 clearOrigPats :: Idris ()
 clearOrigPats = do i <- get
                    let ps = idris_patdefs i
-                   let ps' = mapCtxt (\ (_,miss) -> ([], miss)) ps
+                   let ps' = mapCtxt (\ (_, miss, fc) -> ([], miss, fc)) ps
                    put (i { idris_patdefs = ps' })
 
 -- | Erase types from Ps in the context (basically ending up with

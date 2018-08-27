@@ -227,7 +227,7 @@ data IState = IState {
 
   -- | list of lhs/rhs, and a list of missing clauses. These are not
   -- exported.
-  , idris_patdefs       :: Ctxt ([([(Name, Term)], Term, Term)], [PTerm])
+  , idris_patdefs       :: Ctxt ([([(Name, Term)], Term, Term)], [PTerm], [FC])
   , idris_flags         :: Ctxt [FnOpt]
   , idris_callgraph     :: Ctxt CGInfo  -- ^ name, args used in each pos
   , idris_docstrings    :: Ctxt (Docstring DocTerm, [(Name, Docstring DocTerm)])

@@ -251,7 +251,7 @@ delabTy' ist imps genv tm fullname mvs docases = de genv [] imps tm
     delabCase :: [(Name, Type)] -> [(Name, Name)] -> [PArg] -> Term -> Name -> [Term] -> Maybe PTerm
     delabCase tys env imps scrutinee caseName caseArgs =
       do cases <- case lookupCtxt caseName (idris_patdefs ist) of
-                    [(cases, _)] -> return cases
+                    [(cases, _, _)] -> return cases
                     _ -> Nothing
          return $ PCase un (de tys env imps scrutinee)
                     [ (de tys (env ++ map (\(n, _) -> (n, n)) vars) imps (splitArg lhs),

@@ -40,7 +40,7 @@ import System.Directory
 import System.FilePath
 
 ibcVersion :: Word16
-ibcVersion = 165
+ibcVersion = 166
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -301,7 +301,7 @@ ibc i (IBCDef n) f
                    Just v -> return f { ibc_defs = (n,v) : ibc_defs f }
                    _ -> ifail "IBC write failed"
         case lookupCtxtExact n (idris_patdefs i) of
-                   Just v -> return f' { ibc_patdefs = (n,v) : ibc_patdefs f }
+                   Just (p, missing, _) -> return f' { ibc_patdefs = (n, (p, missing)) : ibc_patdefs f }
                    _ -> return f' -- Not a pattern definition
 
 ibc i (IBCDoc n) f = case lookupCtxtExact n (idris_docstrings i) of

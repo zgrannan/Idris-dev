@@ -1090,7 +1090,7 @@ process fn (Defn n)
                          let defs =
                               case lookupCtxt n (idris_patdefs i) of
                                 [] -> empty
-                                [(d, _)] -> text "Original definiton:" <$>
+                                [(d, _, _)] -> text "Original definiton:" <$>
                                             vsep (map (printCase i) d)
                          let tot =
                               case lookupTotal n (tt_ctxt i) of
@@ -1316,7 +1316,7 @@ process fn (Missing n)
          ppOpts <- fmap ppOptionIst getIState
          case lookupCtxt n (idris_patdefs i) of
            [] -> iPrintError $ "Unknown name " ++ show n
-           [(_, tms)] ->
+           [(_, tms, _)] ->
              iRenderResult (vsep (map (pprintPTerm ppOpts
                                                    []
                                                    []
@@ -1537,15 +1537,15 @@ pprintDef asCore n =
        else return $ map (ppDef ambiguous ist) (lookupCtxtName n patdefs) ++
                      map (ppTy ambiguous ist) (lookupCtxtName n tyinfo) ++
                      map (ppCon ambiguous ist) (filter (flip isDConName ctxt) (lookupNames n ctxt))
-  where ppCoreDef :: IState -> (Name, ([([(Name, Term)], Term, Term)], [PTerm])) -> Doc OutputAnnotation
-        ppCoreDef ist (n, (clauses, missing)) =
+  where ppCoreDef :: IState -> (Name, ([([(Name, Term)], Term, Term)], [PTerm], [FC])) -> Doc OutputAnnotation
+        ppCoreDef ist (n, (clauses, missing, _)) =
           case lookupTy n (tt_ctxt ist) of
             [] -> error "Attempted pprintDef of TT of thing that doesn't exist"
             (ty:_) -> prettyName True True [] n <+> colon <+>
                       align (annotate (AnnTerm [] ty) (pprintTT [] ty)) <$>
                       vsep (map (\(vars, lhs, rhs) ->  pprintTTClause vars lhs rhs) clauses)
-        ppDef :: Bool -> IState -> (Name, ([([(Name, Term)], Term, Term)], [PTerm])) -> Doc OutputAnnotation
-        ppDef amb ist (n, (clauses, missing)) =
+        ppDef :: Bool -> IState -> (Name, ([([(Name, Term)], Term, Term)], [PTerm], [FC])) -> Doc OutputAnnotation
+        ppDef amb ist (n, (clauses, missing, _)) =
           prettyName True amb [] n <+> colon <+>
           align (pprintDelabTy ist n) <$>
           ppClauses ist clauses <> ppMissing missing

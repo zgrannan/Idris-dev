@@ -816,8 +816,8 @@ instance Show Totality where
     show (Partial NotProductive) = "not productive"
     show (Partial BelieveMe) = "not total due to use of believe_me in proof"
     show (Partial (Other ns)) = "possibly not total due to: " ++ showSep ", " (map show ns)
-    show (Partial (Mutual _ ns)) = "possibly not total due to recursive path " ++
-                                 showSep " --> " (map show ns)
+    show (Partial (Mutual fc ns)) = "possibly not total due to recursive path at "
+                                    ++ show fc ++ " " ++ showSep " --> " (map show ns)
     show (Partial (UseUndef n)) = "possibly not total because it uses the undefined name " ++ show n
     show Generated = "auto-generated"
 

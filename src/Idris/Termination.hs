@@ -299,9 +299,15 @@ buildSCG' :: IState -> Name -> [(Term, Term)] -> [Name] -> [SCGEntry]
 buildSCG' ist topfn pats args = nub $ concatMap scgPat (zip pats [0..]) where
 
   getFC :: Int -> Name -> Maybe FC
-  getFC index f = do
-    (_, terms) <- lookupCtxtExact f (idris_patdefs ist)
-    highestFC (terms !! index)
+  getFC index f =
+    let patdefs = lookupCtxt f (idris_patdefs ist)
+        result = do
+                    (_, _, fcs) <- trace ("num_defs " ++ (show $ length patdefs)) patdefs
+                    let inRange = trace ("index " ++ (show index) ++ " fcs " ++ (show $ length fcs)) $ index < length fcs
+                    if inRange then [fcs !! index] else []
+    in
+      trace ("getFC " ++ show result) $ listToMaybe result
+
 
   scgPat :: ((Term, Term), Int) -> [SCGEntry]
   scgPat ((lhs, rhs), index) = let lhs' = delazy lhs
