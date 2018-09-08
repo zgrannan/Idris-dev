@@ -11,6 +11,7 @@ Maintainer  : The Idris Community.
 
 module Idris.Core.DeepSeq where
 
+import Idris.AbsSyntaxTree
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate
 import Idris.Core.TT
@@ -44,6 +45,8 @@ instance NFData Err
 instance NFData ErrorReportPart
 instance NFData ImplicitInfo
 instance NFData RigCount
+instance NFData SizeChange
+instance NFData SCGEntry
 instance (NFData b) => NFData (Binder b)
 instance NFData UExp
 instance NFData NameType

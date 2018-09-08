@@ -86,7 +86,7 @@ data IBCFile = IBCFile {
   , ibc_errorhandlers          :: ![Name]
   , ibc_function_errorhandlers :: ![(Name, Name, Name)] -- fn, arg, handler
   , ibc_metavars               :: ![(Name, (Maybe Name, Int, [Name], Bool, Bool))]
-  , ibc_patdefs                :: ![(Name, ([([(Name, Term)], Term, Term)], [PTerm]))]
+  , ibc_patdefs                :: ![(Name, ([(([(Name, Term)], Term, Term), Maybe FC)], [PTerm]))]
   , ibc_postulates             :: ![Name]
   , ibc_externs                :: ![(Name, Int)]
   , ibc_parsedSpan             :: !(Maybe FC)

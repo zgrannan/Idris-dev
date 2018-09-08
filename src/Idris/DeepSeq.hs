@@ -58,7 +58,6 @@ instance NFData IBCWrite
 instance NFData a => NFData (D.Block a)
 instance NFData a => NFData (D.Inline a)
 instance NFData DocTerm
-instance NFData SizeChange
 instance NFData FnInfo
 instance NFData Codegen
 instance NFData IRFormat

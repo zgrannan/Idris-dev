@@ -222,7 +222,8 @@ elabClauses info' fc opts n_in cs =
            logElab 3 $ "Optimised: " ++ show tree'
            ctxt <- getContext
            ist <- getIState
-           putIState (ist { idris_patdefs = addDef n (force pdef_pe, force pmissing)
+           let patdefs = zip pdef_pe $ map highestFC cs_full
+           putIState (ist { idris_patdefs = addDef n (force patdefs, force pmissing)
                                                 (idris_patdefs ist) })
            let caseInfo = CaseInfo (inlinable opts) (inlinable opts) (dictionary opts)
 

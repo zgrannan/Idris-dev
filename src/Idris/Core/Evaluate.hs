@@ -802,7 +802,7 @@ data Totality = Total [Int] -- ^ well-founded arguments
 
 -- | Reasons why a function may not be total
 data PReason = Other [Name] | Itself | NotCovering | NotPositive | UseUndef Name
-             | ExternalIO | BelieveMe | Mutual [Name] | NotProductive
+             | ExternalIO | BelieveMe | Mutual [Name] (Maybe FC) | NotProductive
     deriving (Show, Eq, Generic)
 
 instance Show Totality where
@@ -816,7 +816,8 @@ instance Show Totality where
     show (Partial NotProductive) = "not productive"
     show (Partial BelieveMe) = "not total due to use of believe_me in proof"
     show (Partial (Other ns)) = "possibly not total due to: " ++ showSep ", " (map show ns)
-    show (Partial (Mutual ns)) = "possibly not total due to recursive path " ++
+    show (Partial (Mutual ns fc)) = "possibly not total due to recursive path at " ++
+                                 (show fc) ++
                                  showSep " --> " (map show ns)
     show (Partial (UseUndef n)) = "possibly not total because it uses the undefined name " ++ show n
     show Generated = "auto-generated"

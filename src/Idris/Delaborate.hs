@@ -256,7 +256,7 @@ delabTy' ist imps genv tm fullname mvs docases = de genv [] imps tm
          return $ PCase un (de tys env imps scrutinee)
                     [ (de tys (env ++ map (\(n, _) -> (n, n)) vars) imps (splitArg lhs),
                        de tys (env ++ map (\(n, _) -> (n, n)) vars) imps rhs)
-                    | (vars, lhs, rhs) <- cases
+                    | (vars, lhs, rhs) <- map fst cases
                     ]
       where splitArg tm | (_, args) <- unApply tm = nonVar (reverse args)
                         | otherwise = tm

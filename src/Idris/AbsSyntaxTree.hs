@@ -227,7 +227,7 @@ data IState = IState {
 
   -- | list of lhs/rhs, and a list of missing clauses. These are not
   -- exported.
-  , idris_patdefs       :: Ctxt ([([(Name, Term)], Term, Term)], [PTerm])
+  , idris_patdefs       :: Ctxt ([(([(Name, Term)], Term, Term), Maybe FC)], [PTerm])
   , idris_flags         :: Ctxt [FnOpt]
   , idris_callgraph     :: Ctxt CGInfo  -- ^ name, args used in each pos
   , idris_docstrings    :: Ctxt (Docstring DocTerm, [(Name, Docstring DocTerm)])
@@ -321,7 +321,12 @@ data SizeChange = Smaller | Same | Bigger | Unknown
 deriving instance Binary SizeChange
 !-}
 
-type SCGEntry = (Name, [Maybe (Int, SizeChange)])
+data SCGEntry = SCGEntry {
+    fname :: Name
+  , sc    :: [Maybe (Int, SizeChange)]
+  , fc    :: Maybe FC
+} deriving (Show, Generic, Eq)
+
 type UsageReason = (Name, Int)  -- fn_name, its_arg_number
 
 data CGInfo = CGInfo {

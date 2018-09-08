@@ -1091,7 +1091,7 @@ process fn (Defn n)
                               case lookupCtxt n (idris_patdefs i) of
                                 [] -> empty
                                 [(d, _)] -> text "Original definiton:" <$>
-                                            vsep (map (printCase i) d)
+                                            vsep (map (printCase i) $ map fst d)
                          let tot =
                               case lookupTotal n (tt_ctxt i) of
                                  [t] -> showTotal t i
@@ -1498,7 +1498,7 @@ showTotal :: Totality -> IState -> Doc OutputAnnotation
 showTotal t@(Partial (Other ns)) i
    = text "possibly not total due to:" <$>
      vsep (map (showTotalN i) ns)
-showTotal t@(Partial (Mutual ns)) i
+showTotal t@(Partial (Mutual ns _)) i
    = text "possibly not total due to recursive path:" <$>
      align (group (vsep (punctuate comma
        (map (\n -> annotate (AnnName n Nothing Nothing Nothing) $
@@ -1537,21 +1537,21 @@ pprintDef asCore n =
        else return $ map (ppDef ambiguous ist) (lookupCtxtName n patdefs) ++
                      map (ppTy ambiguous ist) (lookupCtxtName n tyinfo) ++
                      map (ppCon ambiguous ist) (filter (flip isDConName ctxt) (lookupNames n ctxt))
-  where ppCoreDef :: IState -> (Name, ([([(Name, Term)], Term, Term)], [PTerm])) -> Doc OutputAnnotation
+  where ppCoreDef :: IState -> (Name, ([(([(Name, Term)], Term, Term), Maybe FC)], [PTerm])) -> Doc OutputAnnotation
         ppCoreDef ist (n, (clauses, missing)) =
           case lookupTy n (tt_ctxt ist) of
             [] -> error "Attempted pprintDef of TT of thing that doesn't exist"
             (ty:_) -> prettyName True True [] n <+> colon <+>
                       align (annotate (AnnTerm [] ty) (pprintTT [] ty)) <$>
-                      vsep (map (\(vars, lhs, rhs) ->  pprintTTClause vars lhs rhs) clauses)
-        ppDef :: Bool -> IState -> (Name, ([([(Name, Term)], Term, Term)], [PTerm])) -> Doc OutputAnnotation
+                      vsep (map (\((vars, lhs, rhs),_) ->  pprintTTClause vars lhs rhs) clauses)
+        ppDef :: Bool -> IState -> (Name, ([(([(Name, Term)], Term, Term), Maybe FC)], [PTerm])) -> Doc OutputAnnotation
         ppDef amb ist (n, (clauses, missing)) =
           prettyName True amb [] n <+> colon <+>
           align (pprintDelabTy ist n) <$>
           ppClauses ist clauses <> ppMissing missing
         ppClauses ist [] = text "No clauses."
         ppClauses ist cs = vsep (map pp cs)
-          where pp (varTys, lhs, rhs) =
+          where pp ((varTys, lhs, rhs),_) =
                   let vars = map fst varTys
                       ppTm t = annotate (AnnTerm (zip vars (repeat False)) t) .
                                pprintPTerm (ppOptionIst ist)

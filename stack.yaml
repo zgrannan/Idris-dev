@@ -15,5 +15,5 @@ ghc-options:
   idris: -fwarn-unused-imports -fwarn-unused-binds
 
 nix:
-  enable: false
+  enable: true
   shell-file: stack-shell.nix

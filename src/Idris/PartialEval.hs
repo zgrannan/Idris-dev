@@ -291,7 +291,7 @@ mkPE_TermDecl ist newname sname specty ns
                                              newname sname lhs rhs in
           newpats where
 
-  getPats (ps, _) = map (\(_, lhs, rhs) -> (lhs, rhs)) ps
+  getPats (ps, _) = map (\((_, lhs, rhs),_) -> (lhs, rhs)) ps
 
   eraseRet (PPi p n fc ty sc) = PPi p n fc ty (eraseRet sc)
   eraseRet _ = Placeholder
